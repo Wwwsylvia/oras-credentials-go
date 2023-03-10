@@ -1,15 +1,17 @@
 package file
 
 import (
+	"credentials"
+
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 type Store struct {
-	configs []*Config
+	config credentials.AuthConfig
 }
 
-func GetStore(configPaths []string) (*Store, error) {
-	panic("not implemented") // TODO: Implement
+func GetStore(configPath string) (credentials.Store, error) {
+	return &Store{}, nil
 }
 
 // Store saves credentials into the store

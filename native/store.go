@@ -1,16 +1,22 @@
 package native
 
 import (
+	"credentials"
+
 	"github.com/docker/docker-credential-helpers/client"
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
+
+const remoteCredentialsPrefix = "docker-credential-"
 
 type Store struct {
 	programFunc client.ProgramFunc
 }
 
-func GetStore() *Store {
-	return &Store{}
+func GetStore(helperSuffix string) (credentials.Store, error) {
+	return &Store{
+		programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),
+	}, nil
 }
 
 // Store saves credentials into the store
