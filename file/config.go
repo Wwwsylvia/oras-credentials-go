@@ -1,7 +1,7 @@
-package docker
+package file
 
-// ConfigFile ~/.docker/config.json file info
-type ConfigFile struct {
+// Config ~/.docker/config.json file info
+type Config struct {
 	AuthConfigs       map[string]AuthConfig `json:"auths"`
 	CredentialsStore  string                `json:"credsStore,omitempty"`
 	CredentialHelpers map[string]string     `json:"credHelpers,omitempty"`
