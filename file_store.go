@@ -10,8 +10,11 @@ type fileStore struct {
 	configPath string
 }
 
+// NewFileStore creates a new file credentials store.
 func NewFileStore(configPath string) (Store, error) {
-	return &fileStore{}, nil
+	return &fileStore{
+		configPath: configPath,
+	}, nil
 }
 
 // Store saves credentials into the store
