@@ -1,6 +1,8 @@
 package credentials
 
-import "oras.land/oras-go/v2/registry/remote/auth"
+import (
+	"oras.land/oras-go/v2/registry/remote/auth"
+)
 
 // Store is the interface that any credentials store must implement.
 type Store interface {
