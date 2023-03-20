@@ -19,10 +19,7 @@ func NewOrasStore(configPaths ...string) *orasStore {
 
 func (s *orasStore) Get(registry string) (auth.Credential, error) {
 	for _, path := range s.configPaths {
-		store, err := GetConfiguredStore(path, registry, GetStoreOptions{})
-		if err != nil {
-			panic(err)
-		}
+		store := GetConfiguredStore(path, registry, GetStoreOptions{})
 		cred, err := store.Get(registry)
 		if err != nil {
 			panic(err)
@@ -35,10 +32,7 @@ func (s *orasStore) Get(registry string) (auth.Credential, error) {
 }
 
 func (s *orasStore) Save(registry string, cred auth.Credential) error {
-	store, err := GetConfiguredStore(s.configPaths[0], registry, GetStoreOptions{})
-	if err != nil {
-		panic(err)
-	}
+	store := GetConfiguredStore(s.configPaths[0], registry, GetStoreOptions{})
 	return store.Store(registry, cred)
 }
 
@@ -62,11 +56,9 @@ func OrasLogin() {
 }
 
 // notation
-func GetNotationStore(configPath, credPath, registry string) (Store, error) {
-	nativeStoreOpts := NativeStoreOptions{DisablePlainTextSave: true}
+func GetNotationStore(configPath, credPath, registry string) Store {
 	return GetConfiguredStore(configPath, registry, GetStoreOptions{
-		CredentialsPath:    credPath,
-		NativeStoreOptions: nativeStoreOpts,
+		CredentialsPath: credPath,
 	})
 }
 
