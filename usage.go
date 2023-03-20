@@ -62,4 +62,49 @@ func GetNotationStore(configPath, credPath, registry string) Store {
 	})
 }
 
+func login(registry, username, password, configPath string) error {
+	reg, err := remote.NewRegistry(registry)
+	if err != nil {
+		return err
+	}
+	cred := auth.Credential{
+		Username: username,
+		Password: password,
+	}
+	reg.Client = &auth.Client{
+		Credential: auth.StaticCredential(registry, cred),
+	}
+	ctx := context.Background()
+	if err := reg.Ping(ctx); err != nil {
+		return err
+	}
+
+	credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{
+		DisablePlainTextSave: true,
+	})
+	return credStore.Store(registry, cred)
+}
+
+func authenticate(registry, configPath string) error {
+	credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{
+		CredentialsPath: "mycreds.json",
+	})
+	reg, err := remote.NewRegistry(registry)
+	if err != nil {
+		return err
+	}
+	reg.Client = &auth.Client{
+		Credential: func(ctx context.Context, s string) (auth.Credential, error) {
+			return credStore.Get(registry)
+		},
+	}
+	// do something with reg
+	return nil
+}
+
+func logout(registry, configPath string) error {
+	credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{})
+	return credStore.Erase(registry)
+}
+
 // helm
