@@ -1,8 +1,8 @@
 package credentials
 
 type GetStoreOptions struct {
-	CredFilePath         string
-	DisablePlainTextSave bool
+	NativeStoreOptions
+	CredentialsPath string
 }
 
 // GetConfiguredStore returns a new store from the settings in the configuration

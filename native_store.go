@@ -11,14 +11,20 @@ const remoteCredentialsPrefix = "docker-credential-"
 // using native keychain to keep credentials secure.
 type nativeStore struct {
 	programFunc client.ProgramFunc
+	fs          *fileStore
+}
+
+type NativeStoreOptions struct {
+	DisablePlainTextSave bool
 }
 
 // NewNativeStore creates a new native store that
 // uses a remote helper program to manage credentials.
-func NewNativeStore(helperSuffix string) (Store, error) {
+func NewNativeStore(configPath, helperSuffix string, opts NativeStoreOptions) Store {
 	return &nativeStore{
+		fs:          &fileStore{configPath: configPath},
 		programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),
-	}, nil
+	}
 }
 
 // Store saves credentials into the store

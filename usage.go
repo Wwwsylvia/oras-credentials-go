@@ -63,7 +63,11 @@ func OrasLogin() {
 
 // notation
 func GetNotationStore(configPath, credPath, registry string) (Store, error) {
-	return GetConfiguredStore(configPath, registry, GetStoreOptions{CredFilePath: credPath, DisablePlainTextSave: true})
+	nativeStoreOpts := NativeStoreOptions{DisablePlainTextSave: true}
+	return GetConfiguredStore(configPath, registry, GetStoreOptions{
+		CredentialsPath:    credPath,
+		NativeStoreOptions: nativeStoreOpts,
+	})
 }
 
 // helm
