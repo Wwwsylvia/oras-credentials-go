@@ -2,8 +2,6 @@ package credentials
 
 // GetStoreOptions is options for GetConfiguredStore.
 type GetStoreOptions struct {
-	// Path to the credential file
-	CredentialsPath string
 	// Disable saving credentials in plain text in configuration file.
 	DisablePlainTextSave bool
 }

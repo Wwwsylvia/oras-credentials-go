@@ -57,9 +57,7 @@ func OrasLogin() {
 
 // notation
 func GetNotationStore(configPath, credPath, registry string) Store {
-	return GetConfiguredStore(configPath, registry, GetStoreOptions{
-		CredentialsPath: credPath,
-	})
+	return GetConfiguredStore(configPath, registry, GetStoreOptions{})
 }
 
 func login(registry, username, password, configPath string) error {
@@ -86,9 +84,7 @@ func login(registry, username, password, configPath string) error {
 }
 
 func authenticate(registry, configPath string) error {
-	credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{
-		CredentialsPath: "mycreds.json",
-	})
+	credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{})
 	reg, err := remote.NewRegistry(registry)
 	if err != nil {
 		return err

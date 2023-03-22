@@ -44,14 +44,12 @@ Notes: The following is an example of Docker configuration file.
 ## Challenges
 
 1. Depending on the version of the Docker CLI installed on the target machine, the format of the Docker configuration file may be different. The library should ensure that no config field is lost when saving credentials to the Docker configuration file.
-2. The credential helper configuration (`credsStore` and `credHelpers`) and the credential itself (`auths`) may be maintained in different files. For instance, notation configures `credsStore` and `credHelpers` in its own configuration file, but it still needs to read the credentials from the Docker credential file.
 
 ## Proposal
 
 ### Solution to challenges
 
 1. To ensure that no config field is lost when saving credentials to the Docker configuration file, we can first unmarshal the json file into a json object instead of a fixed struct when parsing the configuration file. And then we can make some changes to the `auths` field of the json object, and marshal the updated json object back to the file. That way we can keep all the unknown fields in the configuration file.
-2. To allow users to read credentials from a file other than the configuration file, we can provide an option to specify a separate path to the credential file.
 
 ### Interface
 
@@ -154,8 +152,6 @@ Furthermore, we can provide options to allow users to specify a separate path to
 ```go
 // GetStoreOptions is options for GetConfiguredStore.
 type GetStoreOptions struct {
-    // Path to the credential file
-    CredentialsPath string
     // Disable saving credentials in plain text in configuration file.
     DisablePlainTextSave bool
 }
@@ -210,9 +206,7 @@ func logout(registry, configPath string) error {
 
 ```go
 func authenticate(registry, configPath string) error {
-    credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{
-        CredentialsPath: "mycreds.json",
-    })
+    credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{})
     reg, err := remote.NewRegistry(registry)
     if err != nil {
         return err
