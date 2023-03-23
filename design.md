@@ -56,6 +56,8 @@ Notes: The following is an example of Docker configuration file.
 We can define a basic interface for reading, saving and removing credentials as follows.
 
 ```go
+package credentials
+
 // Store is the interface that any credentials store must implement.
 type Store interface {
     // Store saves credentials into the store
@@ -74,6 +76,8 @@ The `auth.Credentials` refers to [`Credential`](https://pkg.go.dev/oras.land/ora
 Based on the interface, we can further implement a `FileStore` for managing credentials stored in the Docker configuration file.
 
 ```go
+package credentials
+
 // FileStore implements a credentials store using
 // the docker configuration file to keep the credentials in plain text.
 type FileStore struct {
@@ -110,6 +114,8 @@ func (fs *FileStore) Get(serverAddress string) (auth.Credential, error) {
 Besides, we can also implement a `NativeStore` for managing credentials using a native [credential store](https://docs.docker.com/engine/reference/commandline/login/#credentials-store) or [credential helpers](https://docs.docker.com/engine/reference/commandline/login/#credential-helpers).
 
 ```go
+package credentials
+
 const remoteCredentialsPrefix = "docker-credential-"
 
 // NativeStore implements a credentials store
@@ -150,6 +156,8 @@ In addition, We can also have a utility method to return a new credential store 
 Furthermore, we can provide options to allow users to specify a separate path to the credential file, and to allow users to disable saving credentials in plain text in configuration file.
 
 ```go
+package credentials
+
 // GetStoreOptions is options for GetConfiguredStore.
 type GetStoreOptions struct {
     // Disable saving credentials in plain text in configuration file.
