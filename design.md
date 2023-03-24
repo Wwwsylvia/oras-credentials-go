@@ -60,12 +60,12 @@ package credentials
 
 // Store is the interface that any credentials store must implement.
 type Store interface {
-    // Store saves credentials into the store
-    Store(serverAddress string, cred auth.Credential) error
-    // Erase removes credentials from the store for the given server
-    Erase(serverAddress string) error
-    // Get retrieves credentials from the store for the given server
-    Get(serverAddress string) (auth.Credential, error)
+	// Store saves credentials into the store
+	Store(ctx context.Context, serverAddress string, cred auth.Credential) error
+	// Erase removes credentials from the store for the given server
+	Erase(ctx context.Context, serverAddress string) error
+	// Get retrieves credentials from the store for the given server
+	Get(ctx context.Context, serverAddress string) (auth.Credential, error)
 }
 ```
 
@@ -78,35 +78,33 @@ Based on the interface, we can further implement a `FileStore` for managing cred
 ```go
 package credentials
 
-// FileStore implements a credentials store using
-// the docker configuration file to keep the credentials in plain text.
+// FileStore implements a credentials store using the docker configuration file
+// to keep the credentials in plain text.
 type FileStore struct {
-    configPath  string
-    DisableSave bool
+	configPath string
 }
 
 // NewFileStore creates a new file credentials store.
 func NewFileStore(configPath string) Store {
-    return &FileStore{
-        configPath: configPath,
-    }
+	return &FileStore{
+		configPath: configPath,
+	}
 }
 
 // Store saves credentials into the store
-func (fs *FileStore) Store(serverAddress string, cred auth.Credential) error {
-    panic("not implemented") // TODO: Implement
+func (fs *FileStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+	panic("not implemented") // TODO: Implement
 }
 
 // Erase removes credentials from the store for the given server
-func (fs *FileStore) Erase(serverAddress string) error {
-    panic("not implemented") // TODO: Implement
+func (fs *FileStore) Erase(ctx context.Context, serverAddress string) error {
+	panic("not implemented") // TODO: Implement
 }
 
 // Get retrieves credentials from the store for the given server
-func (fs *FileStore) Get(serverAddress string) (auth.Credential, error) {
-    panic("not implemented") // TODO: Implement
+func (fs *FileStore) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
+	panic("not implemented") // TODO: Implement
 }
-
 ```
 
 ### Native Store
@@ -121,30 +119,30 @@ const remoteCredentialsPrefix = "docker-credential-"
 // NativeStore implements a credentials store
 // using native keychain to keep credentials secure.
 type NativeStore struct {
-    programFunc client.ProgramFunc
+	programFunc client.ProgramFunc
 }
 
-// NewNativeStore creates a new native store that
-// uses a remote helper program to manage credentials.
+// NewNativeStore creates a new native store that uses a remote helper program to
+// manage credentials.
 func NewNativeStore(helperSuffix string) Store {
-    return &NativeStore{
-        programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),
-    }
+	return &NativeStore{
+		programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),
+	}
 }
 
 // Store saves credentials into the store
-func (ns *NativeStore) Store(serverAddress string, cred auth.Credential) error {
-    panic("not implemented") // TODO: Implement
+func (ns *NativeStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+	panic("not implemented") // TODO: Implement
 }
 
 // Erase removes credentials from the store for the given server
-func (ns *NativeStore) Erase(serverAddress string) error {
-    panic("not implemented") // TODO: Implement
+func (ns *NativeStore) Erase(ctx context.Context, serverAddress string) error {
+	panic("not implemented") // TODO: Implement
 }
 
 // Get retrieves credentials from the store for the given server
-func (ns *NativeStore) Get(serverAddress string) (auth.Credential, error) {
-    panic("not implemented") // TODO: Implement
+func (ns *NativeStore) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
+	panic("not implemented") // TODO: Implement
 }
 ```
 
@@ -152,85 +150,84 @@ The `client.ProgramFunc` refers to the [`ProgramFunc`](https://pkg.go.dev/github
 
 ### Utility Methods
 
-In addition, We can also have a utility method to return a new credential store based on the settings in the configuration file. The method should look for the credential store for a given server address in the order of credential helper, credential store and configuration file.  
-Furthermore, we can provide options to allow users to specify a separate path to the credential file, and to allow users to disable saving credentials in plain text in configuration file.
+We can provide some common utility methods for convenience. The method names can be determined later.
+
+#### NewStore()
+
+This method is to return a new credential store based on the settings in the configuration file.  
+The method should look for the credential store for a given server address in the order of credential helper, credential store and configuration file.  
+The method should provide an option `PlainTextSave` to allow users to specify whether to save credentials in plain text. When the native store is not available, if the option is set to false (default value), calling `NewStore().Save()` will result in no operation; if the option is set to true, calling `NewStore().Save()` will save the credential in plain text in the configuration file.
+
 
 ```go
 package credentials
 
-// GetStoreOptions is options for GetConfiguredStore.
-type GetStoreOptions struct {
-    // Disable saving credentials in plain text in configuration file.
-    DisablePlainTextSave bool
+// StoreOptions provides options for NewStore.
+type StoreOptions struct {
+	// PlainTextSave allows saving credentials in plain text in configuration file.
+	PlainTextSave bool
 }
 
-// GetConfiguredStore returns a new store from the settings in the configuration
+// NewStore returns a new store from the settings in the configuration
 // file.
-func GetConfiguredStore(configPath, serverAddress string, opts GetStoreOptions) Store {
-    panic("not implemented") // TODO: Implement
-}
-
-```
-
-### Usage
-
-#### Log in
-
-```go
-func login(registry, username, password, configPath string) error {
-    reg, err := remote.NewRegistry(registry)
-    if err != nil {
-        return err
-    }
-    cred := auth.Credential{
-        Username: username,
-        Password: password,
-    }
-    reg.Client = &auth.Client{
-        Credential: auth.StaticCredential(registry, cred),
-    }
-    ctx := context.Background()
-    if err := reg.Ping(ctx); err != nil {
-        return err
-    }
-
-    credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{
-        DisablePlainTextSave: true,
-    })
-    return credStore.Store(registry, cred)
+func NewStore(configPath, serverAddress string, opts StoreOptions) Store {
+	panic("not implemented") // TODO: Implement
 }
 ```
 
-#### Log out
+#### NewNStore()
+
+This method is to return a new store which will search credentials from the files specified by the given config paths in order.
 
 ```go
-func logout(registry, configPath string) error {
-    credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{})
-    return credStore.Erase(registry)
+package credentials
+
+// NewNStore returns a new store which will search credentials from the files
+// specified by configPaths in order.
+func NewNStore(configPaths []string, opts StoreOptions) Store {
+	panic("not implemented") // TODO: Implement
 }
 ```
 
-#### Authenticate
+#### Login()
+
+This method is to log a registry in.
 
 ```go
-func authenticate(registry, configPath string) error {
-    credStore := GetConfiguredStore(configPath, registry, GetStoreOptions{})
-    reg, err := remote.NewRegistry(registry)
-    if err != nil {
-        return err
-    }
-    reg.Client = &auth.Client{
-        Credential: func(ctx context.Context, s string) (auth.Credential, error) {
-            return credStore.Get(registry)
-        },
-    }
-    // do something with reg
-    return nil
+package credentials
+
+func Login(ctx context.Context, store Store, registry remote.Registry, cred auth.Credential) error {
+	panic("not implemented") // TODO: Implement
+}
+```
+
+#### Logout()
+
+This method is to log a registry out.
+
+```go
+package credentials
+
+func Logout(ctx context.Context, store Store, registryName string) error {
+	panic("not implemented") // TODO: Implement
+}
+```
+
+#### Credential()
+
+This method is to return a `Credential` function that can be used by [`auth.Client`](https://pkg.go.dev/oras.land/oras-go/v2@v2.0.2/registry/remote/auth#Client) of `oras-go v2`.
+
+```go
+package credentials
+
+func Credential(store Store) func(context.Context, string) (auth.Credential, error) {
+	panic("not implemented") // TODO: Implement
 }
 ```
 
 ## References
 
+- Project proposal: https://github.com/oras-project/oras-go/discussions/413
 - #2
 - [Docker Credentails Store](https://docs.docker.com/engine/reference/commandline/login/#credentials-store)
 - [`docker/cli/config`](https://github.com/docker/cli/tree/master/cli/config)

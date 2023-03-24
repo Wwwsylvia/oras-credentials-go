@@ -6,11 +6,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
-// FileStore implements a credentials store using
-// the docker configuration file to keep the credentials in plain text.
+// FileStore implements a credentials store using the docker configuration file
+// to keep the credentials in plain text.
 type FileStore struct {
-	configPath  string
-	DisableSave bool
+	configPath string
 }
 
 // NewFileStore creates a new file credentials store.

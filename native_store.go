@@ -15,8 +15,8 @@ type NativeStore struct {
 	programFunc client.ProgramFunc
 }
 
-// NewNativeStore creates a new native store that
-// uses a remote helper program to manage credentials.
+// NewNativeStore creates a new native store that uses a remote helper program to
+// manage credentials.
 func NewNativeStore(helperSuffix string) Store {
 	return &NativeStore{
 		programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),

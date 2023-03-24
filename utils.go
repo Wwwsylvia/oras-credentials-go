@@ -8,6 +8,18 @@ import (
 )
 
 func Login(ctx context.Context, store Store, registry remote.Registry, cred auth.Credential) error {
+	panic("not implemented") // TODO: Implement
+}
+
+func Logout(ctx context.Context, store Store, registryName string) error {
+	panic("not implemented") // TODO: Implement
+}
+
+func Credential(store Store) func(context.Context, string) (auth.Credential, error) {
+	panic("not implemented") // TODO: Implement
+}
+
+func loginReg(ctx context.Context, store Store, registry remote.Registry, cred auth.Credential) error {
 	name := registry.Reference.Registry
 	registry.Client = &auth.Client{
 		Credential: auth.StaticCredential(name, cred),
@@ -20,10 +32,10 @@ func Login(ctx context.Context, store Store, registry remote.Registry, cred auth
 	return store.Store(ctx, name, cred)
 }
 
-func Logout(ctx context.Context, store Store, registryName string) error {
+func logoutReg(ctx context.Context, store Store, registryName string) error {
 	return store.Erase(ctx, registryName)
 }
 
-func Credentials(store Store) func(context.Context, string) (auth.Credential, error) {
+func credentials(store Store) func(context.Context, string) (auth.Credential, error) {
 	return store.Get
 }

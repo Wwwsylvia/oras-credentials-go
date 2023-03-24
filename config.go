@@ -6,7 +6,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
-// StoreOptions provides options for GetConfiguredStore.
+// StoreOptions provides options for NewStore.
 type StoreOptions struct {
 	// PlainTextSave allows saving credentials in plain text in configuration file.
 	PlainTextSave bool
