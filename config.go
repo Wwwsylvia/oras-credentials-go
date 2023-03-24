@@ -1,13 +1,19 @@
 package credentials
 
-// GetStoreOptions is options for GetConfiguredStore.
-type GetStoreOptions struct {
-	// Disable saving credentials in plain text in configuration file.
-	DisablePlainTextSave bool
+// StoreOptions provides options for GetConfiguredStore.
+type StoreOptions struct {
+	// PlainTextSave allows saving credentials in plain text in configuration file.
+	PlainTextSave bool
 }
 
-// GetConfiguredStore returns a new store from the settings in the configuration
+// NewStore returns a new store from the settings in the configuration
 // file.
-func GetConfiguredStore(configPath, serverAddress string, opts GetStoreOptions) Store {
+func NewStore(configPath, serverAddress string, opts StoreOptions) Store {
+	panic("not implemented") // TODO: Implement
+}
+
+// NewNStore returns a new store which will search credentials from the files
+// specified by configPaths in order.
+func NewNStore(configPaths []string, opts StoreOptions) Store {
 	panic("not implemented") // TODO: Implement
 }
