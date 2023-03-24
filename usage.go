@@ -13,8 +13,8 @@ type orasStore struct {
 	configPaths []string
 }
 
-func NewOrasStore(configPaths ...string) *orasStore {
-	return &orasStore{configPaths: configPaths}
+func NewOrasStore(configPaths ...string) *NStore {
+	return &NStore{configPaths: configPaths}
 }
 
 func (s *orasStore) Get(ctx context.Context, registry string) (auth.Credential, error) {
