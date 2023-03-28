@@ -48,5 +48,5 @@ func (s *NStore) Get(ctx context.Context, registry string) (auth.Credential, err
 
 func (s *NStore) Save(ctx context.Context, registry string, cred auth.Credential) error {
 	store := NewStore(s.configPaths[0], registry, StoreOptions{})
-	return store.Store(ctx, registry, cred)
+	return store.Put(ctx, registry, cred)
 }

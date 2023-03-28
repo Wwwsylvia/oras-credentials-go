@@ -33,7 +33,7 @@ func (s *orasStore) Get(ctx context.Context, registry string) (auth.Credential, 
 
 func (s *orasStore) Save(ctx context.Context, registry string, cred auth.Credential) error {
 	store := NewStore(s.configPaths[0], registry, StoreOptions{})
-	return store.Store(ctx, registry, cred)
+	return store.Put(ctx, registry, cred)
 }
 
 func OrasLogin() {
@@ -82,7 +82,7 @@ func login(registry, username, password, configPath string) error {
 	credStore := NewStore(configPath, registry, StoreOptions{
 		PlainTextSave: true,
 	})
-	return credStore.Store(ctx, registry, cred)
+	return credStore.Put(ctx, registry, cred)
 }
 
 func authenticate(registry, configPath string) error {
@@ -103,7 +103,7 @@ func authenticate(registry, configPath string) error {
 func logout(registry, configPath string) error {
 	ctx := context.Background()
 	credStore := NewStore(configPath, registry, StoreOptions{})
-	return credStore.Erase(ctx, registry)
+	return credStore.Delete(ctx, registry)
 }
 
 // helm

@@ -23,13 +23,13 @@ func NewNativeStore(helperSuffix string) Store {
 	}
 }
 
-// Store saves credentials into the store
-func (ns *NativeStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+// Put saves credentials into the store
+func (ns *NativeStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
 	panic("not implemented") // TODO: Implement
 }
 
-// Erase removes credentials from the store for the given server
-func (ns *NativeStore) Erase(ctx context.Context, serverAddress string) error {
+// Delete removes credentials from the store for the given server
+func (ns *NativeStore) Delete(ctx context.Context, serverAddress string) error {
 	panic("not implemented") // TODO: Implement
 }
 

@@ -29,11 +29,11 @@ func loginReg(ctx context.Context, store Store, registry remote.Registry, cred a
 		return err
 	}
 
-	return store.Store(ctx, name, cred)
+	return store.Put(ctx, name, cred)
 }
 
 func logoutReg(ctx context.Context, store Store, registryName string) error {
-	return store.Erase(ctx, registryName)
+	return store.Delete(ctx, registryName)
 }
 
 func credentials(store Store) func(context.Context, string) (auth.Credential, error) {

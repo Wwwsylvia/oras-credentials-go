@@ -20,13 +20,13 @@ func NewFileStore(configPath string) Store {
 	}
 }
 
-// Store saves credentials into the store
-func (fs *FileStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+// Put saves credentials into the store
+func (fs *FileStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
 	panic("not implemented") // TODO: Implement
 }
 
-// Erase removes credentials from the store for the given server
-func (fs *FileStore) Erase(ctx context.Context, serverAddress string) error {
+// Delete removes credentials from the store for the given server
+func (fs *FileStore) Delete(ctx context.Context, serverAddress string) error {
 	panic("not implemented") // TODO: Implement
 }
 
