@@ -44,14 +44,16 @@ Notes: The following is an example of Docker configuration file.
 ## Challenges
 
 1. Depending on the version of the Docker CLI installed on the target machine, the format of the Docker configuration file may be different. The library should ensure that no config field is lost when saving credentials to the Docker configuration file.
+2. Some clients like [Notation](https://github.com/notaryproject/notation) need to read plain-text credentials from Docker configuration file, but do not want to save credentials in plain-text in the configuration file.
 
 ## Proposal
 
 ### Solution to challenges
 
 1. To ensure that no config field is lost when saving credentials to the Docker configuration file, we can first unmarshal the json file into a json object instead of a fixed struct when parsing the configuration file. And then we can make some changes to the `auths` field of the json object, and marshal the updated json object back to the file. That way we can keep all the unknown fields in the configuration file.
+2. Provide an option to allow users to disable saving credentials in plain-text in configuration files. If the option is set, reading credentials from configuration files will be allowed but saving will result in no operation.
 
-### Interface
+### Interfaces
 
 We can define a basic interface for reading, saving and removing credentials as follows.
 
@@ -79,9 +81,10 @@ Based on the interface, we can further implement a `FileStore` for managing cred
 package credentials
 
 // FileStore implements a credentials store using the docker configuration file
-// to keep the credentials in plain text.
+// to keep the credentials in plain-text.
 type FileStore struct {
-	configPath string
+	configPath  string
+	DisableSave bool
 }
 
 // NewFileStore creates a new file credentials store.
@@ -156,7 +159,7 @@ We can provide some common utility methods for convenience. The method names can
 
 This method is to return a new credential store based on the settings in the configuration file.  
 The method should look for the credential store for a given server address in the order of credential helper, credential store and configuration file.  
-The method should provide an option `PlainTextSave` to allow users to specify whether to save credentials in plain text. When the native store is not available, if the option is set to false (default value), calling `NewStore().Save()` will result in no operation; if the option is set to true, calling `NewStore().Save()` will save the credential in plain text in the configuration file.
+The method should provide an option `PlainTextSave` to allow users to specify whether to save credentials in plain-text. When the native store is not available, if the option is set to false (default value), calling `NewStore().Save()` will result in no operation; if the option is set to true, calling `NewStore().Save()` will save the credential in plain-text in the configuration file.
 
 
 ```go
@@ -164,7 +167,7 @@ package credentials
 
 // StoreOptions provides options for NewStore.
 type StoreOptions struct {
-	// PlainTextSave allows saving credentials in plain text in configuration file.
+	// PlainTextSave allows saving credentials in plain-text in configuration file.
 	PlainTextSave bool
 }
 
@@ -177,7 +180,8 @@ func NewStore(configPath, serverAddress string, opts StoreOptions) Store {
 
 #### NewNStore()
 
-This method is to return a new store which will search credentials from the files specified by the given config paths in order.
+This method is to return a new store which will search credentials from the files specified by the given config paths in order.  
+There might be a better name for this method.
 
 ```go
 package credentials

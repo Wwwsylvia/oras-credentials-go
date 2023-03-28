@@ -9,7 +9,8 @@ import (
 // FileStore implements a credentials store using the docker configuration file
 // to keep the credentials in plain text.
 type FileStore struct {
-	configPath string
+	configPath  string
+	DisableSave bool
 }
 
 // NewFileStore creates a new file credentials store.
