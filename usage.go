@@ -19,7 +19,7 @@ func NewOrasStore(configPaths ...string) *NStore {
 
 func (s *orasStore) Get(ctx context.Context, registry string) (auth.Credential, error) {
 	for _, path := range s.configPaths {
-		store := NewStore(path, registry, StoreOptions{})
+		store := NewStore(path, StoreOptions{})
 		cred, err := store.Get(ctx, registry)
 		if err != nil {
 			panic(err)
@@ -32,7 +32,7 @@ func (s *orasStore) Get(ctx context.Context, registry string) (auth.Credential, 
 }
 
 func (s *orasStore) Save(ctx context.Context, registry string, cred auth.Credential) error {
-	store := NewStore(s.configPaths[0], registry, StoreOptions{})
+	store := NewStore(s.configPaths[0], StoreOptions{})
 	return store.Put(ctx, registry, cred)
 }
 
@@ -59,7 +59,7 @@ func OrasLogin() {
 
 // notation
 func GetNotationStore(configPath, credPath, registry string) Store {
-	return NewStore(configPath, registry, StoreOptions{})
+	return NewStore(configPath, StoreOptions{})
 }
 
 func login(registry, username, password, configPath string) error {
@@ -79,14 +79,14 @@ func login(registry, username, password, configPath string) error {
 	if err := reg.Ping(ctx); err != nil {
 		return err
 	}
-	credStore := NewStore(configPath, registry, StoreOptions{
-		PlainTextSave: true,
+	credStore := NewStore(configPath, StoreOptions{
+		AllowPlainText: true,
 	})
 	return credStore.Put(ctx, registry, cred)
 }
 
 func authenticate(registry, configPath string) error {
-	credStore := NewStore(configPath, registry, StoreOptions{})
+	credStore := NewStore(configPath, StoreOptions{})
 	reg, err := remote.NewRegistry(registry)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func authenticate(registry, configPath string) error {
 
 func logout(registry, configPath string) error {
 	ctx := context.Background()
-	credStore := NewStore(configPath, registry, StoreOptions{})
+	credStore := NewStore(configPath, StoreOptions{})
 	return credStore.Delete(ctx, registry)
 }
 

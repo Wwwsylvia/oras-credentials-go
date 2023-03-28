@@ -8,13 +8,24 @@ import (
 
 // StoreOptions provides options for NewStore.
 type StoreOptions struct {
-	// PlainTextSave allows saving credentials in plain text in configuration file.
-	PlainTextSave bool
+	// AllowPlainText allows saving credentials in plain text in configuration file.
+	AllowPlainText bool
 }
 
 // NewStore returns a new store from the settings in the configuration
 // file.
-func NewStore(configPath, serverAddress string, opts StoreOptions) Store {
+func NewStore(configPath string, opts StoreOptions) Store {
+	panic("not implemented") // TODO: Implement
+}
+
+// NewStoreWithFallbacks returns a new store based on the given stores.
+// The second and the subsequent stores will be used as fallbacks for the first store.
+func NewStoreWithFallbacks(stores ...Store) Store {
+	panic("not implemented") // TODO: Implement
+}
+
+// NewStoreFromDocker returns a store from the default docker config file.
+func NewStoreFromDocker(opts StoreOptions) Store {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -34,7 +45,7 @@ type NStore struct {
 
 func (s *NStore) Get(ctx context.Context, registry string) (auth.Credential, error) {
 	for _, path := range s.configPaths {
-		store := NewStore(path, registry, StoreOptions{})
+		store := NewStore(path, StoreOptions{})
 		cred, err := store.Get(ctx, registry)
 		if err != nil {
 			panic(err)
@@ -47,6 +58,6 @@ func (s *NStore) Get(ctx context.Context, registry string) (auth.Credential, err
 }
 
 func (s *NStore) Save(ctx context.Context, registry string, cred auth.Credential) error {
-	store := NewStore(s.configPaths[0], registry, StoreOptions{})
+	store := NewStore(s.configPaths[0], StoreOptions{})
 	return store.Put(ctx, registry, cred)
 }

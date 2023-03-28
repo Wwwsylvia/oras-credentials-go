@@ -62,10 +62,10 @@ package credentials
 
 // Store is the interface that any credentials store must implement.
 type Store interface {
-	// Store saves credentials into the store
-	Store(ctx context.Context, serverAddress string, cred auth.Credential) error
-	// Erase removes credentials from the store for the given server
-	Erase(ctx context.Context, serverAddress string) error
+	// Put saves credentials into the store
+	Put(ctx context.Context, serverAddress string, cred auth.Credential) error
+	// Delete removes credentials from the store for the given server
+	Delete(ctx context.Context, serverAddress string) error
 	// Get retrieves credentials from the store for the given server
 	Get(ctx context.Context, serverAddress string) (auth.Credential, error)
 }
@@ -94,13 +94,13 @@ func NewFileStore(configPath string) Store {
 	}
 }
 
-// Store saves credentials into the store
-func (fs *FileStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+// Put saves credentials into the store
+func (fs *FileStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
 	panic("not implemented") // TODO: Implement
 }
 
-// Erase removes credentials from the store for the given server
-func (fs *FileStore) Erase(ctx context.Context, serverAddress string) error {
+// Delete removes credentials from the store for the given server
+func (fs *FileStore) Delete(ctx context.Context, serverAddress string) error {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -133,13 +133,13 @@ func NewNativeStore(helperSuffix string) Store {
 	}
 }
 
-// Store saves credentials into the store
-func (ns *NativeStore) Store(ctx context.Context, serverAddress string, cred auth.Credential) error {
+// Put saves credentials into the store
+func (ns *NativeStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
 	panic("not implemented") // TODO: Implement
 }
 
-// Erase removes credentials from the store for the given server
-func (ns *NativeStore) Erase(ctx context.Context, serverAddress string) error {
+// Delete removes credentials from the store for the given server
+func (ns *NativeStore) Delete(ctx context.Context, serverAddress string) error {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -159,7 +159,7 @@ We can provide some common utility methods for convenience. The method names can
 
 This method is to return a new credential store based on the settings in the configuration file.  
 The method should look for the credential store for a given server address in the order of credential helper, credential store and configuration file.  
-The method should provide an option `PlainTextSave` to allow users to specify whether to save credentials in plain-text. When the native store is not available, if the option is set to false (default value), calling `NewStore().Save()` will result in no operation; if the option is set to true, calling `NewStore().Save()` will save the credential in plain-text in the configuration file.
+The method should provide an option `AllowPlainText` to allow users to specify whether to save credentials in plain-text. If the native store is not available, when the option is set to false (default value), `NewStore().Save()` will return an error; when the option is set to true, `NewStore().Save()` will save the credential in plain-text in the configuration file.
 
 
 ```go
@@ -167,28 +167,40 @@ package credentials
 
 // StoreOptions provides options for NewStore.
 type StoreOptions struct {
-	// PlainTextSave allows saving credentials in plain-text in configuration file.
-	PlainTextSave bool
+	// AllowPlainText allows saving credentials in plain text in configuration file.
+	AllowPlainText bool
 }
 
 // NewStore returns a new store from the settings in the configuration
 // file.
-func NewStore(configPath, serverAddress string, opts StoreOptions) Store {
+func NewStore(configPath string, opts StoreOptions) Store {
 	panic("not implemented") // TODO: Implement
 }
 ```
 
-#### NewNStore()
+#### NewStoreFromDocker()
 
-This method is to return a new store which will search credentials from the files specified by the given config paths in order.  
-There might be a better name for this method.
+This method is to return a store from the default docker config file.
 
 ```go
 package credentials
 
-// NewNStore returns a new store which will search credentials from the files
-// specified by configPaths in order.
-func NewNStore(configPaths []string, opts StoreOptions) Store {
+// NewStoreFromDocker returns a store from the default docker config file.
+func NewStoreFromDocker(opts StoreOptions) Store {
+	panic("not implemented") // TODO: Implement
+}
+```
+
+#### NewStoreWithFallbacks()
+
+This method is to return a new store based on the given stores. The second and the subsequent stores will be used as fallbacks for the first store.
+
+```go
+package credentials
+
+// NewStoreWithFallbacks returns a new store based on the given stores.
+// The second and the subsequent stores will be used as fallbacks for the first store.
+func NewStoreWithFallbacks(stores ...Store) Store {
 	panic("not implemented") // TODO: Implement
 }
 ```
@@ -228,6 +240,13 @@ func Credential(store Store) func(context.Context, string) (auth.Credential, err
 	panic("not implemented") // TODO: Implement
 }
 ```
+
+## Additional Requirements
+
+1. The library should support legacy auth config keys (See #1)
+2. The library should support DockerHub-specific domain redirection rules (See [@qweeah's comments](https://github.com/oras-project/oras-credentials-go/discussions/18#discussioncomment-5435316)):
+    - Redirect credential GETs for `docker.io` to `registry-1.docker.io`
+    - Redirect credential PUTs for `registry-1.docker.io` to `https://index.docker.io/v1/`
 
 ## References
 
