@@ -18,13 +18,19 @@ package credentials
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/oras-project/oras-credentials-go/internal/config"
 	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
-// dynamicStore dynamically determines which store to use based on the settings
+const (
+	DockerConfigFileDir  = ".docker"
+	DockerConfigFileName = "config.json"
+)
+
 // in the config file.
 type dynamicStore struct {
 	config  *config.Config
@@ -60,6 +66,14 @@ func NewStore(configPath string, opts StoreOptions) (Store, error) {
 		config:  cfg,
 		options: opts,
 	}, nil
+}
+
+func NewStoreFromDocker(opt StoreOptions) (Store, error) {
+	configPath, err := getDockerConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(configPath, opt)
 }
 
 // Get retrieves credentials from the store for the given server address.
@@ -123,4 +137,20 @@ func getDefaultHelperSuffix() string {
 		return platformDefault
 	}
 	return ""
+}
+
+// TODO: should we allow not existing file? yes
+func getDockerConfigPath() (string, error) {
+	// 1. try env
+	configDir := os.Getenv("DOCKER_CONFIG")
+	if configDir == "" {
+		// 2. try home dir
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		configDir = filepath.Join(homeDir, DockerConfigFileDir)
+	}
+	// TODO: check existence or not?
+	return filepath.Join(configDir, DockerConfigFileName), nil
 }
