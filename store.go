@@ -17,6 +17,7 @@ package credentials
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -198,6 +199,7 @@ func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 	if len(fallbacks) == 0 {
 		return primary
 	}
+	// TODO: when to set platfrom default store?
 	return &storeWithFallbacks{
 		stores: append([]Store{primary}, fallbacks...),
 	}
@@ -222,7 +224,16 @@ func (sf *storeWithFallbacks) Get(ctx context.Context, serverAddress string) (au
 // Put saves credentials into the StoreWithFallbacks. It puts
 // the credentials into the primary store.
 func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
-	return sf.stores[0].Put(ctx, serverAddress, cred)
+	var err error
+	for _, s := range sf.stores {
+		err = s.Put(ctx, serverAddress, cred)
+		if err != nil && errors.Is(err, ErrPlaintextPutDisabled) {
+			continue
+		} else {
+			return err
+		}
+	}
+	return err
 }
 
 // Delete removes credentials from the StoreWithFallbacks for the given server.
