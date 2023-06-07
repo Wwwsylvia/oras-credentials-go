@@ -151,6 +151,7 @@ func (ds *dynamicStore) Delete(ctx context.Context, serverAddress string) error 
 	return ds.getStore(serverAddress).Delete(ctx, serverAddress)
 }
 
+// TODO: expose
 func (ds *dynamicStore) ContainsAuth() bool {
 	return ds.config.IsAuthConfigured()
 }
@@ -201,7 +202,6 @@ func getDockerConfigPath() (string, error) {
 // storeWithFallbacks is a store that has multiple fallback stores.
 type storeWithFallbacks struct {
 	stores []Store
-	// TODO: detected default?
 }
 
 // NewStoreWithFallbacks returns a new store based on the given stores.
@@ -214,9 +214,13 @@ func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 	if len(fallbacks) == 0 {
 		return primary
 	}
-	return &storeWithFallbacks{
+
+	sf := &storeWithFallbacks{
 		stores: append([]Store{primary}, fallbacks...),
 	}
+	// TODO: is this necessary?
+	sf.detectDefaultCredsStore()
+	return sf
 }
 
 // Get retrieves credentials from the StoreWithFallbacks for the given server.
@@ -260,7 +264,6 @@ func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cre
 func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) error {
 	// TODO: which store to delete?``
 	// Should we delete credentials for every fallback store?
-	// return sf.stores[0].Delete(ctx, serverAddress)
 	for _, s := range sf.stores {
 		if err := s.Delete(ctx, serverAddress); err != nil {
 			return err
@@ -272,3 +275,27 @@ func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) 
 // TODO: fallback store to look at the fallback store each time
 // TODO: fallback store won't set the platform default store back
 // TODO: fallback store try to fallback on "getStore" instead of on the exact method?
+
+// TODO: rename?
+func (sf *storeWithFallbacks) detectDefaultCredsStore() {
+	var containsAuth bool
+	for _, s := range sf.stores {
+		ac, ok := s.(authChecker)
+		if !ok {
+			containsAuth = true
+			break
+		}
+		if ac.ContainsAuth() {
+			containsAuth = true
+			break
+		}
+	}
+
+	if containsAuth {
+		return
+	}
+	if helper := getDefaultHelperSuffix(); helper != "" {
+		defaultStore := NewNativeStore(helper)
+		sf.stores = append(sf.stores, defaultStore)
+	}
+}

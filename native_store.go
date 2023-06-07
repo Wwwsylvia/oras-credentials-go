@@ -98,3 +98,5 @@ func getDefaultHelperSuffix() string {
 	}
 	return ""
 }
+
+// TODO: New default native store?
