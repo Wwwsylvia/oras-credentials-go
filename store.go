@@ -43,6 +43,10 @@ type Store interface {
 	Delete(ctx context.Context, serverAddress string) error
 }
 
+type authChecker interface {
+	ContainsAuth() bool
+}
+
 // dynamicStore dynamically determines which store to use based on the settings
 // in the config file.
 type dynamicStore struct {
@@ -64,7 +68,7 @@ type StoreOptions struct {
 
 	// TODO: detect default cred store?
 	// TODO: in notation scenario, set this as true for docker store?
-	DetectDefaultDockerCredsStore bool
+	DetectDefaultCredsStore bool
 }
 
 // NewStore returns a Store based on the given configuration file.
@@ -94,7 +98,7 @@ func NewStore(configPath string, opts StoreOptions) (Store, error) {
 		config:  cfg,
 		options: opts,
 	}
-	if opts.DetectDefaultDockerCredsStore && !cfg.IsAuthConfigured() {
+	if opts.DetectDefaultCredsStore && !cfg.IsAuthConfigured() {
 		// no authentication configured, detect the default credentials store
 		ds.detectedCredsStore = getDefaultHelperSuffix()
 	}
@@ -147,6 +151,10 @@ func (ds *dynamicStore) Delete(ctx context.Context, serverAddress string) error 
 	return ds.getStore(serverAddress).Delete(ctx, serverAddress)
 }
 
+func (ds *dynamicStore) ContainsAuth() bool {
+	return ds.config.IsAuthConfigured()
+}
+
 // TODO: should we use platform default store?
 // getHelperSuffix returns the credential helper suffix for the given server
 // address.
@@ -193,6 +201,7 @@ func getDockerConfigPath() (string, error) {
 // storeWithFallbacks is a store that has multiple fallback stores.
 type storeWithFallbacks struct {
 	stores []Store
+	// TODO: detected default?
 }
 
 // NewStoreWithFallbacks returns a new store based on the given stores.
@@ -213,6 +222,7 @@ func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 // Get retrieves credentials from the StoreWithFallbacks for the given server.
 // It searches the primary and the fallback stores for the credentials of serverAddress
 // and returns when it finds the credentials in any of the stores.
+// TODO: use platform default
 func (sf *storeWithFallbacks) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
 	for _, s := range sf.stores {
 		cred, err := s.Get(ctx, serverAddress)
@@ -245,18 +255,6 @@ func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cre
 	// TODO: which store to put?
 }
 
-func (sf *storeWithFallbacks) getStore() Store {
-	for _, s := range sf.stores {
-		_, ok := s.(*dynamicStore)
-		if !ok {
-			return s
-		}
-
-		// TODO: return native store first?
-	}
-	return nil
-}
-
 // Delete removes credentials from the StoreWithFallbacks for the given server.
 // It deletes the credentials from the primary store.
 func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) error {
@@ -274,93 +272,3 @@ func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) 
 // TODO: fallback store to look at the fallback store each time
 // TODO: fallback store won't set the platform default store back
 // TODO: fallback store try to fallback on "getStore" instead of on the exact method?
-
-type multiStore struct {
-	configs []*config.Config
-	opts    StoreOptions
-}
-
-var errNoAuthConfigured error = errors.New("no auth configured")
-
-func NewMultiStore(opts StoreOptions, configPaths ...string) (Store, error) {
-	configs := make([]*config.Config, len(configPaths))
-	for _, path := range configPaths {
-		cfg, err := config.Load(path)
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, cfg)
-	}
-
-	return &multiStore{
-		configs: configs,
-		opts:    opts,
-	}, nil
-}
-
-// Get retrieves credentials from the store for the given server address.
-func (ms *multiStore) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
-	for _, cfg := range ms.configs {
-		ds := &dynamicStore{
-			config:  cfg,
-			options: ms.opts,
-		}
-		cred, err := ds.Get(ctx, serverAddress)
-		if err != nil {
-			return auth.EmptyCredential, err
-		}
-		if cred != auth.EmptyCredential {
-			return cred, nil
-		}
-	}
-	return auth.EmptyCredential, nil
-}
-
-// Put saves credentials into the store for the given server address.
-func (ms *multiStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
-	for _, cfg := range ms.configs {
-		if helper := getHelperSuffix(cfg, serverAddress); helper != "" {
-			return NewNativeStore(helper).Put(ctx, serverAddress, cred)
-		}
-		if ms.opts.AllowPlaintextPut {
-			return newFileStore(cfg).Put(ctx, serverAddress, cred)
-		}
-	}
-	return ErrPlaintextPutDisabled
-}
-
-// Delete removes credentials from the store for the given server address.
-func (ms *multiStore) Delete(ctx context.Context, serverAddress string) error {
-	for _, cfg := range ms.configs {
-		ds := &dynamicStore{
-			config:  cfg,
-			options: ms.opts,
-		}
-		if err := ds.Delete(ctx, serverAddress); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (ms *multiStore) getStore(serverAddress string) (Store, error) {
-	for _, cfg := range ms.configs {
-		if cfg.IsAuthConfigured() {
-			ds := &dynamicStore{
-				config:  cfg,
-				options: ms.opts,
-			}
-			return ds, nil
-		}
-	}
-	return nil, errNoAuthConfigured
-}
-
-func getHelperSuffix(cfg *config.Config, serverAddress string) string {
-	// 1. Look for a server-specific credential helper first
-	if helper := cfg.GetCredentialHelper(serverAddress); helper != "" {
-		return helper
-	}
-	// 2. Then look for the configured native store
-	return cfg.CredentialsStore()
-}
