@@ -46,11 +46,10 @@ func Test_dynamicStore_authConfigured(t *testing.T) {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
-	store, err := NewStore(configPath, StoreOptions{AllowPlaintextPut: true})
+	ds, err := NewStore(configPath, StoreOptions{AllowPlaintextPut: true})
 	if err != nil {
 		t.Fatal("NewStore() error =", err)
 	}
-	ds := store.(*dynamicStore)
 	serverAddr := "test.example.com"
 	cred := auth.Credential{
 		Username: "username",
@@ -103,11 +102,83 @@ func Test_dynamicStore_noAuthConfigured(t *testing.T) {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
-	store, err := NewStore(configPath, StoreOptions{AllowPlaintextPut: true})
+	ds, err := NewStore(configPath, StoreOptions{AllowPlaintextPut: true})
 	if err != nil {
 		t.Fatal("NewStore() error =", err)
 	}
-	ds := store.(*dynamicStore)
+	serverAddr := "test.example.com"
+	cred := auth.Credential{
+		Username: "username",
+		Password: "password",
+	}
+	ctx := context.Background()
+
+	// Get() should not set detected store back to config
+	if _, err := ds.Get(ctx, serverAddr); err != nil {
+		t.Fatal("dynamicStore.Get() error =", err)
+	}
+	if got := ds.config.CredentialsStore(); got != "" {
+		t.Errorf("ds.config.CredentialsStore() = %v, want empty", got)
+	}
+
+	// test put
+	if err := ds.Put(ctx, serverAddr, cred); err != nil {
+		t.Fatal("dynamicStore.Put() error =", err)
+	}
+
+	// Put() should not set detected store back to config
+	if got := ds.config.CredentialsStore(); got != "" {
+		t.Errorf("ds.config.CredentialsStore() = %v, want empty", got)
+	}
+
+	// test get
+	got, err := ds.Get(ctx, serverAddr)
+	if err != nil {
+		t.Fatal("dynamicStore.Get() error =", err)
+	}
+	if want := cred; got != want {
+		t.Errorf("dynamicStore.Get() = %v, want %v", got, want)
+	}
+
+	// test delete
+	err = ds.Delete(ctx, serverAddr)
+	if err != nil {
+		t.Fatal("dynamicStore.Delete() error =", err)
+	}
+
+	// verify delete
+	got, err = ds.Get(ctx, serverAddr)
+	if err != nil {
+		t.Fatal("dynamicStore.Get() error =", err)
+	}
+	if want := auth.EmptyCredential; got != want {
+		t.Errorf("dynamicStore.Get() = %v, want %v", got, want)
+	}
+}
+
+func Test_dynamicStore_noAuthConfigured_DetectDefaultStore(t *testing.T) {
+	// prepare test content
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "no_auth_configured.json")
+	cfg := configtest.Config{
+		SomeConfigField: 123,
+	}
+	jsonStr, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("failed to marshal config: %v", err)
+	}
+	if err := os.WriteFile(configPath, jsonStr, 0666); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	opts := StoreOptions{
+		AllowPlaintextPut:       true,
+		DetectDefaultCredsStore: true,
+	}
+	ds, err := NewStore(configPath, opts)
+	if err != nil {
+		t.Fatal("NewStore() error =", err)
+	}
 	serverAddr := "test.example.com"
 	cred := auth.Credential{
 		Username: "username",
@@ -274,11 +345,10 @@ func Test_dynamicStore_getHelperSuffix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, err := NewStore(tt.configPath, StoreOptions{})
+			ds, err := NewStore(tt.configPath, StoreOptions{})
 			if err != nil {
 				t.Fatal("NewStore() error =", err)
 			}
-			ds := store.(*dynamicStore)
 			if got := ds.getHelperSuffix(tt.serverAddress); got != tt.want {
 				t.Errorf("dynamicStore.getHelperSuffix() = %v, want %v", got, tt.want)
 			}
@@ -315,11 +385,10 @@ func Test_dynamicStore_getStore_nativeStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, err := NewStore(tt.configPath, StoreOptions{})
+			ds, err := NewStore(tt.configPath, StoreOptions{})
 			if err != nil {
 				t.Fatal("NewStore() error =", err)
 			}
-			ds := store.(*dynamicStore)
 			gotStore := ds.getStore(tt.serverAddress)
 			if _, ok := gotStore.(*nativeStore); !ok {
 				t.Errorf("gotStore is not a native store")
@@ -347,11 +416,10 @@ func Test_dynamicStore_getStore_fileStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store, err := NewStore(tt.configPath, StoreOptions{})
+			ds, err := NewStore(tt.configPath, StoreOptions{})
 			if err != nil {
 				t.Fatal("NewStore() error =", err)
 			}
-			ds := store.(*dynamicStore)
 			gotStore := ds.getStore(tt.serverAddress)
 			gotFS1, ok := gotStore.(*FileStore)
 			if !ok {

@@ -43,13 +43,13 @@ type Store interface {
 	Delete(ctx context.Context, serverAddress string) error
 }
 
-type authChecker interface {
+type AuthChecker interface {
 	ContainsAuth() bool
 }
 
-// dynamicStore dynamically determines which store to use based on the settings
+// DynamicStore dynamically determines which store to use based on the settings
 // in the config file.
-type dynamicStore struct {
+type DynamicStore struct {
 	config             *config.Config
 	options            StoreOptions
 	detectedCredsStore string
@@ -89,12 +89,12 @@ type StoreOptions struct {
 // References:
 //   - https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 //   - https://docs.docker.com/engine/reference/commandline/cli/#docker-cli-configuration-file-configjson-properties
-func NewStore(configPath string, opts StoreOptions) (Store, error) {
+func NewStore(configPath string, opts StoreOptions) (*DynamicStore, error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, err
 	}
-	ds := &dynamicStore{
+	ds := &DynamicStore{
 		config:  cfg,
 		options: opts,
 	}
@@ -124,14 +124,14 @@ func NewStoreFromDocker(opt StoreOptions) (Store, error) {
 }
 
 // Get retrieves credentials from the store for the given server address.
-func (ds *dynamicStore) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
+func (ds *DynamicStore) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
 	return ds.getStore(serverAddress).Get(ctx, serverAddress)
 }
 
 // Put saves credentials into the store for the given server address.
 // Returns ErrPlaintextPutDisabled if native store is not available and
 // StoreOptions.AllowPlaintextPut is set to false.
-func (ds *dynamicStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) (returnErr error) {
+func (ds *DynamicStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) (returnErr error) {
 	if err := ds.getStore(serverAddress).Put(ctx, serverAddress, cred); err != nil {
 		return err
 	}
@@ -147,19 +147,19 @@ func (ds *dynamicStore) Put(ctx context.Context, serverAddress string, cred auth
 }
 
 // Delete removes credentials from the store for the given server address.
-func (ds *dynamicStore) Delete(ctx context.Context, serverAddress string) error {
+func (ds *DynamicStore) Delete(ctx context.Context, serverAddress string) error {
 	return ds.getStore(serverAddress).Delete(ctx, serverAddress)
 }
 
 // TODO: expose
-func (ds *dynamicStore) ContainsAuth() bool {
+func (ds *DynamicStore) ContainsAuth() bool {
 	return ds.config.IsAuthConfigured()
 }
 
 // TODO: should we use platform default store?
 // getHelperSuffix returns the credential helper suffix for the given server
 // address.
-func (ds *dynamicStore) getHelperSuffix(serverAddress string) string {
+func (ds *DynamicStore) getHelperSuffix(serverAddress string) string {
 	// 1. Look for a server-specific credential helper first
 	if helper := ds.config.GetCredentialHelper(serverAddress); helper != "" {
 		return helper
@@ -174,7 +174,7 @@ func (ds *dynamicStore) getHelperSuffix(serverAddress string) string {
 
 // getStore returns a store for the given server address.
 // TODO: return a bool to indicate if file store is used?
-func (ds *dynamicStore) getStore(serverAddress string) Store {
+func (ds *DynamicStore) getStore(serverAddress string) Store {
 	if helper := ds.getHelperSuffix(serverAddress); helper != "" {
 		return NewNativeStore(helper)
 	}
@@ -214,13 +214,9 @@ func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 	if len(fallbacks) == 0 {
 		return primary
 	}
-
-	sf := &storeWithFallbacks{
+	return &storeWithFallbacks{
 		stores: append([]Store{primary}, fallbacks...),
 	}
-	// TODO: is this necessary?
-	sf.detectDefaultCredsStore()
-	return sf
 }
 
 // Get retrieves credentials from the StoreWithFallbacks for the given server.
@@ -254,8 +250,8 @@ func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cre
 			return err
 		}
 	}
-	return err
 
+	return err
 	// TODO: which store to put?
 }
 
@@ -275,27 +271,3 @@ func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) 
 // TODO: fallback store to look at the fallback store each time
 // TODO: fallback store won't set the platform default store back
 // TODO: fallback store try to fallback on "getStore" instead of on the exact method?
-
-// TODO: rename?
-func (sf *storeWithFallbacks) detectDefaultCredsStore() {
-	var containsAuth bool
-	for _, s := range sf.stores {
-		ac, ok := s.(authChecker)
-		if !ok {
-			containsAuth = true
-			break
-		}
-		if ac.ContainsAuth() {
-			containsAuth = true
-			break
-		}
-	}
-
-	if containsAuth {
-		return
-	}
-	if helper := getDefaultHelperSuffix(); helper != "" {
-		defaultStore := NewNativeStore(helper)
-		sf.stores = append(sf.stores, defaultStore)
-	}
-}
