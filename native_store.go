@@ -17,6 +17,7 @@ package credentials
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 
 	"github.com/docker/docker-credential-helpers/client"
@@ -48,6 +49,23 @@ func NewNativeStore(helperSuffix string) Store {
 	return &nativeStore{
 		programFunc: client.NewShellProgramFunc(remoteCredentialsPrefix + helperSuffix),
 	}
+}
+
+// ErrProgramNotFound is returned when the helper program is not found.
+var ErrProgramNotFound = errors.New("program not found")
+
+// NewDefaultNativeStore returns a platform-default native store.
+//   - Windows: "wincred"
+//   - Linux: "pass" or "secretservice"
+//   - macOS: "osxkeychain"
+//
+// References:
+//   - https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+func NewDefaultNativeStore() (Store, error) {
+	if helper := getDefaultHelperSuffix(); helper != "" {
+		return NewNativeStore(helper), nil
+	}
+	return nil, ErrProgramNotFound
 }
 
 // Get retrieves credentials from the store for the given server.
@@ -98,5 +116,3 @@ func getDefaultHelperSuffix() string {
 	}
 	return ""
 }
-
-// TODO: New default native store?

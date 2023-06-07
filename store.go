@@ -43,10 +43,6 @@ type Store interface {
 	Delete(ctx context.Context, serverAddress string) error
 }
 
-type AuthChecker interface {
-	ContainsAuth() bool
-}
-
 // DynamicStore dynamically determines which store to use based on the settings
 // in the config file.
 type DynamicStore struct {
@@ -66,25 +62,30 @@ type StoreOptions struct {
 	//     plaintext in the config file when native store is not available.
 	AllowPlaintextPut bool
 
-	// TODO: detect default cred store?
-	// TODO: in notation scenario, set this as true for docker store?
+	// DetectDefaultCredsStore enables detecting the platform-default
+	// credentials store when the config file has no authentication information.
+	//
+	// If DetectDefaultCredsStore is set to true, the store will detect and set
+	// the default credentials store in the "credsStore" field of the config
+	// file.
+	//   - Windows: "wincred"
+	//   - Linux: "pass" or "secretservice"
+	//   - macOS: "osxkeychain"
+	//
+	// References:
+	//   - https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+	//   - https://docs.docker.com/engine/reference/commandline/cli/#docker-cli-configuration-file-configjson-properties
 	DetectDefaultCredsStore bool
 }
 
 // NewStore returns a Store based on the given configuration file.
 //
-// For Get(), Put() and Delete(), the returned Store will dynamically determine which underlying credentials
-// store to use for the given server address.
+// For Get(), Put() and Delete(), the returned Store will dynamically determine
+// which underlying credentials store to use for the given server address.
 // The  underlying credentials store  is determined in the following order:
 //  1. Native server-specific credential helper
 //  2. Native credentials store
 //  3. The plain-text config file itself
-//
-// If the config file has no authentication information, a platform-default
-// native store will be used.
-//   - Windows: "wincred"
-//   - Linux: "pass" or "secretservice"
-//   - macOS: "osxkeychain"
 //
 // References:
 //   - https://docs.docker.com/engine/reference/commandline/login/#credentials-store
@@ -129,8 +130,8 @@ func (ds *DynamicStore) Get(ctx context.Context, serverAddress string) (auth.Cre
 }
 
 // Put saves credentials into the store for the given server address.
-// Returns ErrPlaintextPutDisabled if native store is not available and
-// StoreOptions.AllowPlaintextPut is set to false.
+// Put returns ErrPlaintextPutDisabled if native store is not available and
+// [StoreOptions].AllowPlaintextPut is set to false.
 func (ds *DynamicStore) Put(ctx context.Context, serverAddress string, cred auth.Credential) (returnErr error) {
 	if err := ds.getStore(serverAddress).Put(ctx, serverAddress, cred); err != nil {
 		return err
@@ -151,12 +152,17 @@ func (ds *DynamicStore) Delete(ctx context.Context, serverAddress string) error 
 	return ds.getStore(serverAddress).Delete(ctx, serverAddress)
 }
 
-// TODO: expose
-func (ds *DynamicStore) ContainsAuth() bool {
+// IsAuthConfigured returns whether there is authentication configured in the
+// config file or not.
+//
+// IsAuthConfigured returns true when:
+//   - The "credsStore" field is not empty
+//   - Or the "credHelpers" field is not empty
+//   - Or there is any entry in the "auths" field
+func (ds *DynamicStore) IsAuthConfigured() bool {
 	return ds.config.IsAuthConfigured()
 }
 
-// TODO: should we use platform default store?
 // getHelperSuffix returns the credential helper suffix for the given server
 // address.
 func (ds *DynamicStore) getHelperSuffix(serverAddress string) string {
@@ -173,7 +179,6 @@ func (ds *DynamicStore) getHelperSuffix(serverAddress string) string {
 }
 
 // getStore returns a store for the given server address.
-// TODO: return a bool to indicate if file store is used?
 func (ds *DynamicStore) getStore(serverAddress string) Store {
 	if helper := ds.getHelperSuffix(serverAddress); helper != "" {
 		return NewNativeStore(helper)
@@ -208,8 +213,12 @@ type storeWithFallbacks struct {
 //   - Get() searches the primary and the fallback stores
 //     for the credentials and returns when it finds the
 //     credentials in any of the stores.
-//   - Put() saves the credentials into the primary store.
-//   - Delete() deletes the credentials from the primary store.
+//   - Put() attempts to save the credentials into the primary store. If it
+//     encounters [ErrPlaintextPutDisabled], it will attempt to save the
+//     credentials into the fallback stores one by one, until it succeeds or
+//     encounters other errors than [ErrPlaintextPutDisabled].
+//   - Delete() removes the credentials from the primary store and all the
+//     fallback stores.
 func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 	if len(fallbacks) == 0 {
 		return primary
@@ -219,10 +228,8 @@ func NewStoreWithFallbacks(primary Store, fallbacks ...Store) Store {
 	}
 }
 
-// Get retrieves credentials from the StoreWithFallbacks for the given server.
-// It searches the primary and the fallback stores for the credentials of serverAddress
-// and returns when it finds the credentials in any of the stores.
-// TODO: use platform default
+// Get searches the primary and the fallback stores for the credentials of
+// serverAddress and returns when it finds the credentials in any of the stores.
 func (sf *storeWithFallbacks) Get(ctx context.Context, serverAddress string) (auth.Credential, error) {
 	for _, s := range sf.stores {
 		cred, err := s.Get(ctx, serverAddress)
@@ -236,12 +243,13 @@ func (sf *storeWithFallbacks) Get(ctx context.Context, serverAddress string) (au
 	return auth.EmptyCredential, nil
 }
 
-// Put saves credentials into the StoreWithFallbacks. It puts
-// the credentials into the primary store.
+// Put attempts to save the credentials into the primary store. If it encounters
+// ErrPlaintextPutDisabled, it will attempt to save the credentials into the
+// fallback stores one by one, until it succeeds or encounters other errors than
+// ErrPlaintextPutDisabled.
 func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cred auth.Credential) error {
 	var err error
 	for _, s := range sf.stores {
-		// attempt local file store first, then subsequent native store
 		err = s.Put(ctx, serverAddress, cred)
 		if err == nil {
 			return nil
@@ -249,17 +257,14 @@ func (sf *storeWithFallbacks) Put(ctx context.Context, serverAddress string, cre
 		if !errors.Is(err, ErrPlaintextPutDisabled) {
 			return err
 		}
+		// fallback to the next store on ErrPlaintextPutDisabled
 	}
-
 	return err
-	// TODO: which store to put?
 }
 
-// Delete removes credentials from the StoreWithFallbacks for the given server.
-// It deletes the credentials from the primary store.
+// Delete removes the credentials from the primary store and all the fallback
+// stores.
 func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) error {
-	// TODO: which store to delete?``
-	// Should we delete credentials for every fallback store?
 	for _, s := range sf.stores {
 		if err := s.Delete(ctx, serverAddress); err != nil {
 			return err
@@ -267,7 +272,3 @@ func (sf *storeWithFallbacks) Delete(ctx context.Context, serverAddress string) 
 	}
 	return nil
 }
-
-// TODO: fallback store to look at the fallback store each time
-// TODO: fallback store won't set the platform default store back
-// TODO: fallback store try to fallback on "getStore" instead of on the exact method?

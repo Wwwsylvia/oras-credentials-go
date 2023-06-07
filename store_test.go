@@ -50,6 +50,13 @@ func Test_dynamicStore_authConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal("NewStore() error =", err)
 	}
+
+	// test IsAuthConfigured
+	authConfigured := ds.IsAuthConfigured()
+	if want := true; authConfigured != want {
+		t.Errorf("dynamicStore.IsAuthConfigured() = %v, want %v", authConfigured, want)
+	}
+
 	serverAddr := "test.example.com"
 	cred := auth.Credential{
 		Username: "username",
@@ -106,6 +113,13 @@ func Test_dynamicStore_noAuthConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal("NewStore() error =", err)
 	}
+
+	// test IsAuthConfigured
+	authConfigured := ds.IsAuthConfigured()
+	if want := false; authConfigured != want {
+		t.Errorf("dynamicStore.IsAuthConfigured() = %v, want %v", authConfigured, want)
+	}
+
 	serverAddr := "test.example.com"
 	cred := auth.Credential{
 		Username: "username",
@@ -179,6 +193,13 @@ func Test_dynamicStore_noAuthConfigured_DetectDefaultStore(t *testing.T) {
 	if err != nil {
 		t.Fatal("NewStore() error =", err)
 	}
+
+	// test IsAuthConfigured
+	authConfigured := ds.IsAuthConfigured()
+	if want := false; authConfigured != want {
+		t.Errorf("dynamicStore.IsAuthConfigured() = %v, want %v", authConfigured, want)
+	}
+
 	serverAddr := "test.example.com"
 	cred := auth.Credential{
 		Username: "username",
@@ -439,6 +460,7 @@ func Test_dynamicStore_getStore_fileStore(t *testing.T) {
 	}
 }
 
+// TODO: improve test
 func TestStoreWithFallbacks(t *testing.T) {
 	// Initialize a StoreWithFallbacks
 	primaryStore := &testStore{}
