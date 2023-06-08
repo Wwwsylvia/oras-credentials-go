@@ -116,7 +116,7 @@ func NewStore(configPath string, opts StoreOptions) (*DynamicStore, error) {
 // References:
 //   - https://docs.docker.com/engine/reference/commandline/cli/#configuration-files
 //   - https://docs.docker.com/engine/reference/commandline/cli/#change-the-docker-directory
-func NewStoreFromDocker(opt StoreOptions) (Store, error) {
+func NewStoreFromDocker(opt StoreOptions) (*DynamicStore, error) {
 	configPath, err := getDockerConfigPath()
 	if err != nil {
 		return nil, err
